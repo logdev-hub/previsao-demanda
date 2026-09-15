@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Previsão de Demanda — Entendendo a matemática do planejamento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --senac-blue: #004A8D;
+    --senac-blue-deep: #00315C;
+    --senac-blue-soft: #E7F0F8;
+    --senac-orange: #F7941D;
+    --senac-orange-soft: #FFF1DE;
+    --senac-orange-deep: #C9700B;
+    --ink: #142433;
+    --ink-soft: #4B5C6B;
+    --paper: #FBFAF7;
+    --paper-raised: #FFFFFF;
+    --line: #E2E6EA;
+    --good: #1E8E5A;
+    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink: #EDEFF2;
+      --ink-soft: #A9B4BE;
+      --paper: #0E1620;
+      --paper-raised: #16212D;
+      --line: #263241;
+      --senac-blue-soft: #10263B;
+      --senac-orange-soft: #2E2210;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink: #EDEFF2;
+    --ink-soft: #A9B4BE;
+    --paper: #0E1620;
+    --paper-raised: #16212D;
+    --line: #263241;
+    --senac-blue-soft: #10263B;
+    --senac-orange-soft: #2E2210;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-body);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  img,svg{max-width:100%;}
+
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px;}
+  .wrap-wide{max-width:920px;margin:0 auto;padding:0 24px;}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    background:linear-gradient(160deg, var(--senac-blue-deep) 0%, var(--senac-blue) 62%, #0A6BB0 100%);
+    color:#fff;
+    padding:72px 0 96px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::after{
+    content:"";
+    position:absolute;
+    right:-120px; top:-120px;
+    width:420px;height:420px;
+    background:radial-gradient(circle, rgba(247,148,29,0.35) 0%, rgba(247,148,29,0) 70%);
+  }
+  .hero-eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--font-mono);
+    font-size:13px;
+    letter-spacing:0.02em;
+    color:var(--senac-orange);
+    background:rgba(247,148,29,0.12);
+    border:1px solid rgba(247,148,29,0.4);
+    padding:6px 14px;
+    border-radius:999px;
+    margin-bottom:28px;
+  }
+  .hero h1{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(32px, 5vw, 52px);
+    line-height:1.12;
+    margin:0 0 20px;
+    max-width:14ch;
+  }
+  .hero p{
+    font-size:18px;
+    color:rgba(255,255,255,0.86);
+    max-width:52ch;
+    margin:0 0 32px;
+  }
+  .hero-stats{
+    display:flex; flex-wrap:wrap; gap:28px;
+    margin-top:40px;
+    position:relative;
+  }
+  .hero-stat b{
+    display:block;
+    font-family:var(--font-display);
+    font-size:28px;
+    color:#fff;
+  }
+  .hero-stat span{
+    font-size:13px;
+    color:rgba(255,255,255,0.7);
+  }
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:64px 0;}
+  section.tight{padding:40px 0;}
+  h2.section-title{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(24px,3.4vw,32px);
+    margin:0 0 6px;
+    color:var(--ink);
+  }
+  .section-kicker{
+    color:var(--senac-blue);
+    font-weight:700;
+    font-size:14px;
+    margin:0 0 10px;
+  }
+  :root[data-theme="dark"] .section-kicker, @media (prefers-color-scheme: dark){ .section-kicker{ } }
+  p.lead{
+    font-size:17px;
+    color:var(--ink-soft);
+    max-width:64ch;
+  }
+  p{max-width:70ch;}
+
+  .callout{
+    background:var(--senac-orange-soft);
+    border:1px solid rgba(247,148,29,0.35);
+    border-left:4px solid var(--senac-orange);
+    border-radius:10px;
+    padding:18px 20px;
+    margin:24px 0;
+    font-size:15px;
+  }
+  .callout b{color:var(--senac-orange-deep);}
+  .callout.blue{
+    background:var(--senac-blue-soft);
+    border-color:rgba(0,74,141,0.25);
+    border-left-color:var(--senac-blue);
+  }
+  .callout.blue b{color:var(--senac-blue);}
+
+  /* ---------- TIMELINE / STEPS ---------- */
+  .step{
+    display:grid;
+    grid-template-columns:56px 1fr;
+    gap:20px;
+    position:relative;
+    padding-bottom:48px;
+  }
+  .step:last-child{padding-bottom:0;}
+  .step::before{
+    content:"";
+    position:absolute;
+    left:27px; top:56px; bottom:0;
+    width:2px;
+    background:var(--line);
+  }
+  .step:last-child::before{display:none;}
+  .step-num{
+    width:56px;height:56px;
+    border-radius:50%;
+    background:var(--senac-blue);
+    color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:22px;
+    flex-shrink:0;
+    z-index:1;
+  }
+  .step-body h3{
+    font-family:var(--font-display);
+    font-size:21px;
+    margin:6px 0 10px;
+    font-weight:600;
+  }
+
+  /* ---------- TABLES ---------- */
+  .table-scroll{
+    overflow-x:auto;
+    margin:20px 0;
+    border:1px solid var(--line);
+    border-radius:12px;
+  }
+  table{
+    border-collapse:collapse;
+    width:100%;
+    min-width:520px;
+    font-size:14px;
+  }
+  table.narrow{min-width:0;}
+  th,td{
+    text-align:left;
+    padding:10px 14px;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  thead th{
+    background:var(--senac-blue);
+    color:#fff;
+    font-weight:600;
+    position:sticky; top:0;
+  }
+  tbody tr:nth-child(even){background:rgba(0,74,141,0.035);}
+  tr.total-row td{
+    font-weight:700;
+    background:var(--senac-orange-soft) !important;
+    color:var(--senac-orange-deep);
+  }
+  td.num, th.num{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+
+  .table-toggle{
+    display:inline-flex; align-items:center; gap:8px;
+    background:transparent;
+    border:1px solid var(--senac-blue);
+    color:var(--senac-blue);
+    font:inherit; font-weight:600; font-size:14px;
+    padding:9px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-top:4px;
+  }
+  .table-toggle:hover{background:var(--senac-blue-soft);}
+
+  /* ---------- FORMULA BLOCKS ---------- */
+  .formula-card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:24px 26px;
+    margin:20px 0;
+    box-shadow:0 1px 2px rgba(20,36,51,0.04);
+  }
+  .formula{
+    font-family:var(--font-mono);
+    font-size:16px;
+    background:var(--senac-blue-soft);
+    border-radius:10px;
+    padding:16px 18px;
+    margin:12px 0;
+    overflow-x:auto;
+    color:var(--senac-blue-deep);
+  }
+  :root[data-theme="dark"] .formula, @media (prefers-color-scheme: dark){.formula{color:#BFD9F2;}}
+  .formula .op{color:var(--senac-orange-deep); font-weight:700;}
+  .formula-steps{
+    display:grid; gap:10px;
+    margin-top:14px;
+  }
+  .formula-step{
+    display:grid;
+    grid-template-columns:auto 1fr;
+    gap:14px;
+    align-items:baseline;
+    font-family:var(--font-mono);
+    font-size:14.5px;
+    padding:10px 0;
+    border-top:1px dashed var(--line);
+  }
+  .formula-step:first-child{border-top:none;}
+  .formula-step .tag{
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .result-pill{
+    display:inline-flex; align-items:baseline; gap:8px;
+    background:var(--senac-orange);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:999px;
+    font-family:var(--font-mono);
+    font-weight:600;
+    font-size:16px;
+    margin-top:6px;
+  }
+
+  /* ---------- CARDS GRID ---------- */
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  @media (max-width:640px){.grid-2{grid-template-columns:1fr;}}
+  .meaning-card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:24px;
+  }
+  .meaning-card .icon{font-size:30px; display:block; margin-bottom:10px;}
+  .meaning-card h4{
+    font-family:var(--font-display);
+    font-size:19px;
+    margin:0 0 8px;
+  }
+  .meaning-card.a{border-top:4px solid var(--senac-blue);}
+  .meaning-card.b{border-top:4px solid var(--senac-orange);}
+  .meaning-card p{font-size:14.5px; color:var(--ink-soft); margin:0 0 10px;}
+  .meaning-card .analogy{
+    font-size:13.5px;
+    background:var(--paper);
+    border-radius:8px;
+    padding:10px 12px;
+    color:var(--ink-soft);
+  }
+
+  /* ---------- INTERACTIVE WIDGETS ---------- */
+  .widget{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:26px;
+    margin:28px 0;
+  }
+  .widget-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .widget-head .badge{
+    font-size:12px; font-weight:700;
+    background:var(--senac-blue); color:#fff;
+    padding:4px 10px; border-radius:999px;
+  }
+  .widget-title{font-family:var(--font-display); font-size:20px; font-weight:600; margin:0;}
+  .widget-sub{color:var(--ink-soft); font-size:14px; margin:6px 0 20px;}
+
+  .slider-row{margin-bottom:18px;}
+  .slider-row label{
+    display:flex; justify-content:space-between;
+    font-size:14px; font-weight:600; margin-bottom:8px;
+  }
+  .slider-row label .val{
+    font-family:var(--font-mono);
+    color:var(--senac-blue);
+    background:var(--senac-blue-soft);
+    padding:2px 10px; border-radius:6px;
+  }
+  input[type="range"]{
+    width:100%;
+    accent-color:var(--senac-orange);
+    height:6px;
+  }
+  #b-slider{accent-color:var(--senac-orange);}
+  #a-slider{accent-color:var(--senac-blue);}
+
+  canvas{width:100%; height:auto; display:block; border-radius:10px;}
+  .chart-wrap{background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:12px;}
+  .legend{display:flex; flex-wrap:wrap; gap:16px; margin-top:14px; font-size:13px; color:var(--ink-soft);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:14px; height:3px; border-radius:2px; display:inline-block;}
+
+  .live-eq{
+    text-align:center;
+    font-family:var(--font-mono);
+    font-size:19px;
+    background:var(--senac-blue-deep);
+    color:#fff;
+    padding:16px;
+    border-radius:10px;
+    margin:18px 0;
+  }
+  .live-eq .a-part{color:#8FC7FF;}
+  .live-eq .b-part{color:var(--senac-orange);}
+
+  .sim-controls{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;}
+  @media (max-width:520px){.sim-controls{grid-template-columns:1fr;}}
+  .sim-controls label{font-size:13px; font-weight:600; display:block; margin-bottom:6px; color:var(--ink-soft);}
+  select, input[type="number"]{
+    width:100%;
+    font:inherit; font-size:15px;
+    padding:10px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .sim-result{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin-top:18px;
+  }
+  @media (max-width:640px){.sim-result{grid-template-columns:1fr;}}
+  .sim-box{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+    text-align:center;
+  }
+  .sim-box span{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:4px;}
+  .sim-box b{font-family:var(--font-mono); font-size:19px; color:var(--senac-blue);}
+  .sim-box.highlight b{color:var(--senac-orange-deep);}
+
+  /* ---------- QUIZ ---------- */
+  .quiz-card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px 24px;
+    margin-bottom:16px;
+  }
+  .quiz-q{font-weight:600; margin:0 0 14px; font-size:15.5px;}
+  .quiz-opts{display:grid; gap:10px;}
+  .quiz-opt{
+    text-align:left;
+    font:inherit; font-size:14.5px;
+    padding:11px 14px;
+    border-radius:9px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    cursor:pointer;
+    transition:background .15s;
+  }
+  .quiz-opt:hover{background:var(--senac-blue-soft);}
+  .quiz-opt.correct{background:#E4F5EC; border-color:var(--good); color:#155C3C; font-weight:600;}
+  .quiz-opt.wrong{background:#FBE7E7; border-color:#C94040; color:#8A2626;}
+  .quiz-feedback{margin-top:12px; font-size:14px; display:none;}
+  .quiz-feedback.show{display:block;}
+
+  /* ---------- RECAP ---------- */
+  .recap-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+  @media (max-width:720px){.recap-grid{grid-template-columns:1fr 1fr;}}
+  @media (max-width:480px){.recap-grid{grid-template-columns:1fr;}}
+  .recap-item{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:16px;
+  }
+  .recap-item .e{font-size:22px;}
+  .recap-item h5{margin:8px 0 4px; font-size:14.5px; font-family:var(--font-display);}
+  .recap-item p{font-size:13px; color:var(--ink-soft); margin:0;}
+
+  footer{
+    padding:40px 0 60px;
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+  }
+  footer b{color:var(--senac-blue);}
+
+  ::selection{background:var(--senac-orange); color:#fff;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-eyebrow">📊 material didático · previsão de demanda</div>
+    <h1>A matemática por trás de prever quanto sua empresa vai vender</h1>
+    <p>Uma indústria vendeu isto nos últimos 24 meses. Com apenas quatro colunas de cálculo, vamos descobrir quanto ela deve vender no ano que vem — mês a mês.</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><b>24</b><span>meses de histórico</span></div>
+      <div class="hero-stat"><b>2</b><span>variáveis-chave: a e b</span></div>
+      <div class="hero-stat"><b>12</b><span>meses previstos para 2016</span></div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ================= INTRO ================= -->
+<section class="tight">
+  <div class="wrap">
+    <p class="section-kicker">🧭 Antes de começar</p>
+    <h2 class="section-title">Do que estamos falando, exatamente?</h2>
+    <p class="lead">Toda empresa que compra matéria-prima, escala funcionários ou aluga um caminhão precisa responder à mesma pergunta: <b>quanto vamos vender no próximo mês?</b> Errar essa conta é caro — comprar demais trava dinheiro em estoque parado, comprar de menos faz a empresa perder vendas.</p>
+    <p>A planilha que vamos explorar usa um método chamado <b>Mínimos Quadrados</b> — parece complicado, mas é só uma forma de traçar a "linha média" que melhor representa como a demanda vem crescendo, e depois ajustar essa linha para os meses que costumam vender mais (como dezembro) ou menos (como junho). Vamos abrir essa caixa-preta, passo a passo, com números reais.</p>
+  </div>
+</section>
+
+<!-- ================= STEP 1: DADOS ================= -->
+<section id="step1">
+  <div class="wrap">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <p class="section-kicker">🗂️ o ponto de partida</p>
+        <h3>Organizar o que já aconteceu</h3>
+        <p>Tudo começa com o histórico de vendas — chamado de <b>demanda</b> — mês a mês, de janeiro de 2014 a dezembro de 2015. São 24 números reais, nada inventado. Veja as primeiras linhas:</p>
+
+        <div class="table-scroll">
+          <table class="narrow">
+            <thead>
+              <tr><th>Ano</th><th>Mês</th><th class="num">Demanda (Y)</th><th class="num">Período (X)</th></tr>
+            </thead>
+            <tbody id="step1-table"></tbody>
+          </table>
+        </div>
+        <button class="table-toggle" id="step1-toggle">Ver as 24 linhas completas ⬇️</button>
+
+        <div class="callout blue">
+          <b>Por que trocar "janeiro de 2014" por um número (1, 2, 3...)?</b> Porque o computador não sabe fazer conta com nome de mês. Chamamos essa contagem de <b>Período (X)</b>: janeiro/2014 vira <span style="font-family:var(--font-mono)">X=1</span>, fevereiro/2014 vira <span style="font-family:var(--font-mono)">X=2</span>, e assim por diante até dezembro/2015, que é <span style="font-family:var(--font-mono)">X=24</span>. Isso transforma o calendário em uma reta numérica simples — e retas, o computador sabe calcular muito bem.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEP 2: X² e XY ================= -->
+<section class="tight" id="step2">
+  <div class="wrap">
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <p class="section-kicker">✖️ preparando os ingredientes</p>
+        <h3>Duas colunas auxiliares: X² e XY</h3>
+        <p>Antes de calcular a famosa reta, precisamos de duas colunas extras. Elas não têm um "significado" no mundo real — são apenas ingredientes matemáticos que a fórmula da reta vai pedir mais adiante. Ainda assim, vale entender o que cada uma faz:</p>
+
+        <div class="grid-2">
+          <div class="meaning-card">
+            <span class="icon">🔢</span>
+            <h4>X² (período ao quadrado)</h4>
+            <p>É simplesmente o período multiplicado por ele mesmo. No mês 5, por exemplo, X²=25. Essa coluna "pesa" mais os períodos distantes do início, o que ajuda a fórmula a medir corretamente o quanto o tempo passou.</p>
+          </div>
+          <div class="meaning-card">
+            <span class="icon">🔗</span>
+            <h4>XY (período × demanda)</h4>
+            <p>É o período multiplicado pela demanda daquele mês. Essa coluna conecta "quando" (X) com "quanto vendeu" (Y) em um único número — é o elo que permite calcular se a demanda sobe junto com o tempo, e o quanto.</p>
+          </div>
+        </div>
+
+        <div class="callout">
+          <b>Pense assim:</b> imagine que você quer saber a "inclinação média" de uma escada de 24 degraus. Não basta olhar cada degrau isoladamente — você precisa combinar a altura de cada degrau com a posição dele na escada. X² e XY fazem exatamente esse trabalho de combinação para a fórmula da reta.
+        </div>
+
+        <div class="table-scroll">
+          <table class="narrow">
+            <thead>
+              <tr><th>Mês</th><th class="num">Demanda (Y)</th><th class="num">Período (X)</th><th class="num">X²</th><th class="num">XY</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Janeiro/2014</td><td class="num">800</td><td class="num">1</td><td class="num">1</td><td class="num">800</td></tr>
+              <tr><td>Fevereiro/2014</td><td class="num">900</td><td class="num">2</td><td class="num">4</td><td class="num">1.800</td></tr>
+              <tr><td>Março/2014</td><td class="num">750</td><td class="num">3</td><td class="num">9</td><td class="num">2.250</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEP 3: SOMATÓRIOS ================= -->
+<section id="step3">
+  <div class="wrap">
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <p class="section-kicker">➕ juntando tudo</p>
+        <h3>Somar cada coluna inteira</h3>
+        <p>Agora somamos cada uma das quatro colunas, de cima a baixo, nas 24 linhas. O resultado são quatro números únicos que resumem os dois anos inteiros de histórico:</p>
+
+        <div class="table-scroll">
+          <table class="narrow">
+            <thead><tr><th>Soma de</th><th class="num">Valor</th><th>O que representa</th></tr></thead>
+            <tbody>
+              <tr class="total-row"><td>ΣY</td><td class="num">17.190</td><td>total vendido nos 24 meses</td></tr>
+              <tr class="total-row"><td>ΣX</td><td class="num">300</td><td>soma dos números de período (1+2+...+24)</td></tr>
+              <tr class="total-row"><td>ΣX²</td><td class="num">4.900</td><td>soma dos períodos ao quadrado</td></tr>
+              <tr class="total-row"><td>ΣXY</td><td class="num">216.910</td><td>soma da relação período×demanda</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Além disso, guardamos um quinto número: <b>n = 24</b>, que é simplesmente a quantidade de meses observados. É com essas cinco peças — ΣY, ΣX, ΣX², ΣXY e n — que vamos montar a reta no próximo passo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEP 4: FÓRMULAS a e b ================= -->
+<section id="step4">
+  <div class="wrap">
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <p class="section-kicker">🧮 o coração do método</p>
+        <h3>Calculando "a" e "b"</h3>
+        <p>Toda reta da matemática segue a mesma receita: <span style="font-family:var(--font-mono)">Ŷ = a + bX</span>. Ela tem só dois personagens — <b>a</b> e <b>b</b> — e é sobre eles que o restante deste material vai girar. As fórmulas parecem assustadoras à primeira vista, mas são só aritmética com os cinco números que acabamos de somar:</p>
+
+        <div class="formula-card">
+          <div class="formula">a&nbsp;=&nbsp;<span class="op">(</span>ΣX² × ΣY <span class="op">−</span> ΣX × ΣXY<span class="op">)</span> ÷ <span class="op">(</span>n × ΣX² <span class="op">−</span> (ΣX)²<span class="op">)</span></div>
+          <div class="formula-steps">
+            <div class="formula-step"><span class="tag">substituindo</span><span>(4.900 × 17.190 − 300 × 216.910) ÷ (24 × 4.900 − 300²)</span></div>
+            <div class="formula-step"><span class="tag">numerador</span><span>84.231.000 − 65.073.000 = 19.158.000</span></div>
+            <div class="formula-step"><span class="tag">denominador</span><span>117.600 − 90.000 = 27.600</span></div>
+          </div>
+          <div class="result-pill">a = 19.158.000 ÷ 27.600 = 694,13</div>
+        </div>
+
+        <div class="formula-card">
+          <div class="formula">b&nbsp;=&nbsp;<span class="op">(</span>n × ΣXY <span class="op">−</span> ΣX × ΣY<span class="op">)</span> ÷ <span class="op">(</span>n × ΣX² <span class="op">−</span> (ΣX)²<span class="op">)</span></div>
+          <div class="formula-steps">
+            <div class="formula-step"><span class="tag">substituindo</span><span>(24 × 216.910 − 300 × 17.190) ÷ 27.600</span></div>
+            <div class="formula-step"><span class="tag">numerador</span><span>5.205.840 − 5.157.000 = 48.840</span></div>
+          </div>
+          <div class="result-pill">b = 48.840 ÷ 27.600 = 1,77</div>
+        </div>
+
+        <div class="callout">
+          Repare que o <b>denominador é o mesmo nas duas fórmulas</b> (27.600) — ele só mede o "espalhamento" dos períodos no tempo, então faz sentido ser compartilhado. O que muda é o numerador, que combina a demanda de um jeito diferente para cada um dos dois valores.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEP 5: O QUE SÃO a e b ================= -->
+<section id="step5">
+  <div class="wrap">
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <p class="section-kicker">💡 o momento "ahá"</p>
+        <h3>Mas afinal, o que "a" e "b" significam de verdade?</h3>
+        <p>Isso é o mais importante deste material. Esqueça a fórmula por um instante e pense em um carro andando em linha reta numa estrada:</p>
+
+        <div class="grid-2">
+          <div class="meaning-card a">
+            <span class="icon">🏁</span>
+            <h4>a = 694,13 → o ponto de partida</h4>
+            <p><b>a</b> é o <b>intercepto</b>: o valor da demanda no instante em que a contagem começa (quando X=0, ou seja, "mês zero", antes de janeiro/2014). É a base sobre a qual tudo cresce — o "nível inicial" do negócio, sem nenhum efeito do tempo ainda.</p>
+            <div class="analogy">🚗 É como o marcador do odômetro do carro no momento em que você liga o motor: um número fixo de onde a viagem parte.</div>
+          </div>
+          <div class="meaning-card b">
+            <span class="icon">📈</span>
+            <h4>b = 1,77 → a velocidade de crescimento</h4>
+            <p><b>b</b> é a <b>inclinação</b> da reta: quanto a demanda tende a aumentar, em média, a cada mês que passa. Como b é positivo, a tendência geral do negócio é de crescimento — cerca de 1,77 unidade a mais por mês.</p>
+            <div class="analogy">🚗 É como a velocidade do carro no velocímetro: define o quão rápido você se afasta do ponto de partida a cada minuto.</div>
+          </div>
+        </div>
+
+        <p style="margin-top:24px">Junte os dois numa frase: <b>"a demanda parte de uma base de aproximadamente 694 unidades e cresce, em média, 1,77 unidade a cada mês que passa."</b> É exatamente isso que a reta <span style="font-family:var(--font-mono)">Ŷ = 694,13 + 1,77X</span> representa.</p>
+
+        <!-- INTERACTIVE a/b DEMO -->
+        <div class="widget">
+          <div class="widget-head"><span class="badge">interativo</span></div>
+          <p class="widget-title">🎛️ Mexa em "a" e "b" e veja a reta mudar</p>
+          <p class="widget-sub">Os pontos azuis são a demanda real de 2014–2015. A linha laranja é a reta Ŷ = a + bX. Arraste os controles e observe.</p>
+
+          <div class="live-eq">Ŷ&nbsp;=&nbsp;<span class="a-part" id="eqA">694,13</span>&nbsp;+&nbsp;<span class="b-part" id="eqB">1,77</span>&nbsp;×&nbsp;X</div>
+
+          <div class="slider-row">
+            <label>a — ponto de partida (intercepto) <span class="val" id="aVal">694,13</span></label>
+            <input type="range" id="a-slider" min="400" max="950" step="1" value="694">
+          </div>
+          <div class="slider-row">
+            <label>b — inclinação (crescimento por mês) <span class="val" id="bVal">1,77</span></label>
+            <input type="range" id="b-slider" min="-8" max="8" step="0.1" value="1.77">
+          </div>
+
+          <div class="chart-wrap">
+            <canvas id="abCanvas" width="880" height="380"></canvas>
+          </div>
+          <div class="legend">
+            <span><i style="background:var(--senac-blue)"></i> demanda real (2014–2015)</span>
+            <span><i style="background:var(--senac-orange)"></i> reta Ŷ = a + bX</span>
+          </div>
+          <p id="abFeedback" class="callout blue" style="margin-top:18px;"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEP 6: LINHA DE TENDÊNCIA ================= -->
+<section class="tight" id="step6">
+  <div class="wrap">
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <p class="section-kicker">📏 aplicando a fórmula</p>
+        <h3>Usando a e b para prever qualquer mês</h3>
+        <p>Com a e b em mãos, calcular a <b>tendência</b> de qualquer período X é só substituir na fórmula. Veja janeiro e fevereiro de 2014:</p>
+
+        <div class="table-scroll">
+          <table class="narrow">
+            <thead><tr><th>Mês</th><th class="num">X</th><th>Cálculo</th><th class="num">Tendência (Ŷ)</th><th class="num">Demanda real</th></tr></thead>
+            <tbody>
+              <tr><td>Janeiro/2014</td><td class="num">1</td><td style="font-family:var(--font-mono);font-size:13px">694,13 + 1,77×1</td><td class="num">695,90</td><td class="num">800</td></tr>
+              <tr><td>Fevereiro/2014</td><td class="num">2</td><td style="font-family:var(--font-mono);font-size:13px">694,13 + 1,77×2</td><td class="num">697,67</td><td class="num">900</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Note que a tendência (695,90) é bem mais "morna" que a demanda real de janeiro (800). Isso é esperado: a reta mostra apenas o <b>crescimento médio e suave</b> — ela ainda não sabe que janeiro costuma vender mais por causa de sazonalidade. É isso que resolvemos no próximo passo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEP 7: RAZÃO / SAZONALIDADE ================= -->
+<section id="step7">
+  <div class="wrap">
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <p class="section-kicker">🌡️ medindo os altos e baixos</p>
+        <h3>A "razão": o quanto cada mês foge da tendência</h3>
+        <p>Agora comparamos o que <b>realmente aconteceu</b> com o que a reta <b>previa</b> naquele mês. Basta dividir:</p>
+        <div class="formula-card">
+          <div class="formula">Razão&nbsp;=&nbsp;Demanda real ÷ Tendência (Ŷ)</div>
+          <div class="result-pill">Janeiro/2014 → 800 ÷ 695,90 = 1,1496</div>
+        </div>
+        <p>Um resultado de <b>1,15</b> quer dizer que janeiro vendeu <b>15% a mais</b> do que a tendência "esperava" — um sinal de que janeiro é, historicamente, um mês forte. Já junho de 2014 tem razão 0,71: vendeu <b>29% a menos</b> que a tendência, sinal de mês fraco. Fazendo essa conta para os 24 meses, descobrimos o "temperamento" de cada mês do ano.</p>
+
+        <div class="callout blue">
+          <b>Por que isso importa?</b> Sem essa etapa, a previsão trataria dezembro (mês de festas, geralmente forte) igual a junho (geralmente mais fraco) — e isso faria a empresa errar a mão no planejamento de estoque e produção.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEP 8: MÉDIA SAZONAL ================= -->
+<section class="tight" id="step8">
+  <div class="wrap">
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-body">
+        <p class="section-kicker">🗓️ um índice por mês</p>
+        <h3>Tirando a média de cada mês entre os dois anos</h3>
+        <p>Como temos dois janeiros (2014 e 2015), duas fevereiros, e assim por diante, calculamos a <b>média</b> da razão de cada mês nos dois anos. Isso gera um <b>índice sazonal</b> — um número fixo por mês que representa o padrão de sazonalidade da empresa:</p>
+
+        <div class="table-scroll">
+          <table class="narrow">
+            <thead><tr><th>Mês</th><th class="num">Razão 2014</th><th class="num">Razão 2015</th><th class="num">Índice sazonal médio</th></tr></thead>
+            <tbody id="step8-table"></tbody>
+          </table>
+        </div>
+        <p>Índices acima de 1,00 (como janeiro e fevereiro) indicam meses historicamente fortes; abaixo de 1,00 (como maio e junho) indicam meses mais fracos. Este índice é a "assinatura sazonal" do negócio, e vamos usá-lo já já para ajustar a previsão final.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEP 9: PREVISÃO FINAL ================= -->
+<section id="step9">
+  <div class="wrap">
+    <div class="step">
+      <div class="step-num">9</div>
+      <div class="step-body">
+        <p class="section-kicker">🎯 juntando tendência + sazonalidade</p>
+        <h3>A fórmula final da previsão para 2016</h3>
+        <p>Chegamos ao objetivo: prever os 12 meses de 2016 (períodos X=25 a X=36). A fórmula final multiplica a tendência daquele mês futuro pelo índice sazonal médio correspondente:</p>
+
+        <div class="formula-card">
+          <div class="formula">Previsão&nbsp;=&nbsp;<span class="op">(</span>a + bX<span class="op">)</span> × Índice sazonal médio do mês</div>
+          <div class="formula-steps">
+            <div class="formula-step"><span class="tag">janeiro/2016, X=25</span><span>(694,13 + 1,77×25) × 1,2023</span></div>
+            <div class="formula-step"><span class="tag">tendência</span><span>694,13 + 44,25 = 738,38</span></div>
+          </div>
+          <div class="result-pill">Previsão jan/2016 = 738,38 × 1,2023 ≈ 887,75 unidades</div>
+        </div>
+
+        <p>Ou seja: a tendência "pura" apontava 738 unidades para janeiro/2016, mas como janeiro é historicamente 20% mais forte, a previsão final sobe para quase 888 unidades. É a tendência sendo <b>temperada</b> pelo comportamento sazonal real do negócio.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHART: histórico + tendência + previsão -->
+<section class="tight">
+  <div class="wrap-wide">
+    <div class="widget">
+      <div class="widget-head"><span class="badge">visualização</span></div>
+      <p class="widget-title">📊 As três séries juntas: 2014–2016</p>
+      <p class="widget-sub">Demanda real (2014–2015), a linha de tendência pura, e a previsão final já com sazonalidade (2016).</p>
+      <div class="chart-wrap">
+        <canvas id="mainChart" width="1000" height="420"></canvas>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--senac-blue)"></i> demanda real 2014–2015</span>
+        <span><i style="background:var(--ink-soft)"></i> tendência (Ŷ = a + bX)</span>
+        <span><i style="background:var(--senac-orange)"></i> previsão 2016 (com sazonalidade)</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEP 10: CAPACIDADE ================= -->
+<section id="step10">
+  <div class="wrap">
+    <div class="step">
+      <div class="step-num">🔟</div>
+      <div class="step-body">
+        <p class="section-kicker">🏭 a pergunta que fecha o ciclo</p>
+        <h3>A fábrica dá conta desse volume?</h3>
+        <p>Prever quanto vai vender só é útil se a empresa consegue comparar com sua <b>capacidade efetiva</b> — quanto ela consegue produzir. Neste exemplo, a capacidade é de 1.000 unidades por mês. Basta dividir a previsão pela capacidade:</p>
+        <div class="formula-card">
+          <div class="formula">% de utilização&nbsp;=&nbsp;Previsão ÷ Capacidade efetiva</div>
+          <div class="result-pill">Fevereiro/2016 = 981,88 ÷ 1.000 = 98,2% da capacidade</div>
+        </div>
+        <p>Um número acima de 90% liga um alerta: a fábrica está quase no limite e pode ser hora de planejar horas extras, contratações temporárias ou um segundo turno. Veja o panorama completo dos 12 meses de 2016:</p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Mês</th><th class="num">Previsão</th><th class="num">Capacidade</th><th class="num">% utilização</th></tr></thead>
+            <tbody id="step10-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SIMULADOR FINAL ================= -->
+<section id="simulator">
+  <div class="wrap-wide">
+    <p class="section-kicker">🧪 mão na massa</p>
+    <h2 class="section-title">Calcule sua própria previsão</h2>
+    <p class="lead">Escolha um mês de 2016 e veja, em tempo real, cada peça da conta se encaixando — exatamente como fizemos nos passos acima.</p>
+
+    <div class="widget">
+      <div class="sim-controls">
+        <div>
+          <label for="sim-month">Mês de 2016</label>
+          <select id="sim-month"></select>
+        </div>
+        <div>
+          <label for="sim-capacity">Capacidade efetiva (unid./mês)</label>
+          <input type="number" id="sim-capacity" value="1000" min="100" step="50">
+        </div>
+      </div>
+
+      <div class="live-eq" id="sim-eq">Ŷ = 694,13 + 1,77 × 25</div>
+
+      <div class="sim-result">
+        <div class="sim-box"><span>Tendência pura</span><b id="sim-trend">738,38</b></div>
+        <div class="sim-box"><span>Índice sazonal do mês</span><b id="sim-index">1,2023</b></div>
+        <div class="sim-box highlight"><span>Previsão final</span><b id="sim-forecast">887,75</b></div>
+      </div>
+      <p style="text-align:center; margin:18px 0 0; font-size:14px; color:var(--ink-soft);">
+        Uso da capacidade instalada: <b id="sim-util" style="color:var(--senac-orange-deep)">88,8%</b>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= QUIZ ================= -->
+<section class="tight" id="quiz">
+  <div class="wrap">
+    <p class="section-kicker">✅ confira o que aprendeu</p>
+    <h2 class="section-title">Teste rápido</h2>
+
+    <div class="quiz-card">
+      <p class="quiz-q">1. Na equação Ŷ = a + bX, o que o valor de "a" representa?</p>
+      <div class="quiz-opts">
+        <button class="quiz-opt" data-correct="false">O crescimento médio da demanda a cada mês</button>
+        <button class="quiz-opt" data-correct="true">O valor de partida da demanda, quando X = 0</button>
+        <button class="quiz-opt" data-correct="false">O total de vendas do ano inteiro</button>
+      </div>
+      <p class="quiz-feedback"></p>
+    </div>
+
+    <div class="quiz-card">
+      <p class="quiz-q">2. Se "b" fosse negativo em vez de 1,77, o que isso indicaria sobre o negócio?</p>
+      <div class="quiz-opts">
+        <button class="quiz-opt" data-correct="false">Que a demanda é sempre igual, mês a mês</button>
+        <button class="quiz-opt" data-correct="true">Que a tendência geral é de queda na demanda ao longo do tempo</button>
+        <button class="quiz-opt" data-correct="false">Que não existe sazonalidade</button>
+      </div>
+      <p class="quiz-feedback"></p>
+    </div>
+
+    <div class="quiz-card">
+      <p class="quiz-q">3. Por que multiplicamos a tendência pelo índice sazonal antes de fechar a previsão final?</p>
+      <div class="quiz-opts">
+        <button class="quiz-opt" data-correct="false">Para deixar o número mais redondo</button>
+        <button class="quiz-opt" data-correct="false">Porque a fórmula de a e b exige essa etapa</button>
+        <button class="quiz-opt" data-correct="true">Para ajustar a previsão "morna" da reta aos meses historicamente mais fortes ou mais fracos</button>
+      </div>
+      <p class="quiz-feedback"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= RECAP ================= -->
+<section class="tight">
+  <div class="wrap-wide">
+    <p class="section-kicker">🔁 resumo visual</p>
+    <h2 class="section-title">O caminho completo, em seis paradas</h2>
+    <div class="recap-grid" style="margin-top:24px;">
+      <div class="recap-item"><span class="e">🗂️</span><h5>1. Histórico</h5><p>24 meses de demanda real viram a matéria-prima do modelo.</p></div>
+      <div class="recap-item"><span class="e">➕</span><h5>2. Somatórios</h5><p>ΣY, ΣX, ΣX², ΣXY e n resumem os dois anos em cinco números.</p></div>
+      <div class="recap-item"><span class="e">🧮</span><h5>3. a e b</h5><p>Definem a reta: ponto de partida e velocidade de crescimento.</p></div>
+      <div class="recap-item"><span class="e">📏</span><h5>4. Tendência</h5><p>Ŷ = a + bX projeta o crescimento médio, mês a mês.</p></div>
+      <div class="recap-item"><span class="e">🌡️</span><h5>5. Sazonalidade</h5><p>Cada mês ganha um índice que mede se costuma vender mais ou menos.</p></div>
+      <div class="recap-item"><span class="e">🎯</span><h5>6. Previsão final</h5><p>Tendência × índice sazonal = a previsão que vira plano de produção.</p></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    Material desenvolvido para fins didáticos · Método dos Mínimos Quadrados com ajuste sazonal · <b>Senac</b>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- DADOS REAIS DA PLANILHA ----------
+  const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+  const demand2014 = [800,900,750,700,650,500,540,580,600,680,750,820];
+  const demand2015 = [900,980,740,630,520,650,700,750,700,730,780,840];
+
+  const a0 = 694.13, b0 = 1.77;
+  const seasonalIndex = [1.2023,1.3266,1.0495,0.9352,0.8213,0.8024,0.8631,0.9235,0.9011,0.9755,1.0562,1.1433];
+  const razao2014 = [1.1496,1.2900,1.0723,0.9983,0.9246,0.7095,0.7643,0.8189,0.8450,0.9553,1.0510,1.1463];
+  const razao2015 = [1.2550,1.3632,1.0268,0.8720,0.7180,0.8953,0.9619,1.0281,0.9572,0.9958,1.0615,1.1404];
+
+  function fmt(n, dec){
+    return n.toLocaleString('pt-BR', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+  }
+  function trendAt(X){ return a0 + b0*X; }
+  function forecast2016(monthIdx){ // monthIdx 0-11
+    const X = 25 + monthIdx;
+    const t = trendAt(X);
+    return { X, trend:t, index:seasonalIndex[monthIdx], value: t*seasonalIndex[monthIdx] };
+  }
+
+  // ---------- STEP 1 TABLE ----------
+  const step1Body = document.getElementById('step1-table');
+  const fullYears = [{y:2014, arr:demand2014},{y:2015, arr:demand2015}];
+  let rows1 = [];
+  let x = 1;
+  fullYears.forEach(yr => {
+    yr.arr.forEach((v,i) => {
+      rows1.push(`<tr><td>${yr.y}</td><td>${monthNames[i]}</td><td class="num">${fmt(v,0)}</td><td class="num">${x}</td></tr>`);
+      x++;
+    });
+  });
+  function renderStep1(showAll){
+    step1Body.innerHTML = (showAll ? rows1 : rows1.slice(0,4)).join('');
+  }
+  renderStep1(false);
+  document.getElementById('step1-toggle').addEventListener('click', function(){
+    const showing = this.dataset.open === "true";
+    renderStep1(!showing);
+    this.dataset.open = showing ? "false" : "true";
+    this.textContent = showing ? "Ver as 24 linhas completas ⬇️" : "Mostrar só os 3 primeiros meses ⬆️";
+  });
+
+  // ---------- STEP 8 TABLE ----------
+  const step8Body = document.getElementById('step8-table');
+  step8Body.innerHTML = monthNames.map((m,i) =>
+    `<tr><td>${m}</td><td class="num">${fmt(razao2014[i],4)}</td><td class="num">${fmt(razao2015[i],4)}</td><td class="num" style="font-weight:700;color:var(--senac-orange-deep)">${fmt(seasonalIndex[i],4)}</td></tr>`
+  ).join('');
+
+  // ---------- STEP 10 TABLE ----------
+  const step10Body = document.getElementById('step10-table');
+  step10Body.innerHTML = monthNames.map((m,i) => {
+    const f = forecast2016(i);
+    const util = f.value/1000;
+    return `<tr><td>${m}/2016</td><td class="num">${fmt(f.value,2)}</td><td class="num">1.000</td><td class="num" style="font-weight:700;color:${util>0.85?'var(--senac-orange-deep)':'var(--good)'}">${fmt(util*100,1)}%</td></tr>`;
+  }).join('');
+
+  // ---------- SIMULATOR ----------
+  const simMonth = document.getElementById('sim-month');
+  simMonth.innerHTML = monthNames.map((m,i) => `<option value="${i}">${m}/2016</option>`).join('');
+  const simCapacity = document.getElementById('sim-capacity');
+
+  function updateSimulator(){
+    const idx = parseInt(simMonth.value,10);
+    const cap = parseFloat(simCapacity.value) || 1000;
+    const f = forecast2016(idx);
+    document.getElementById('sim-eq').innerHTML = `Ŷ = 694,13 + 1,77 × ${f.X}`;
+    document.getElementById('sim-trend').textContent = fmt(f.trend,2);
+    document.getElementById('sim-index').textContent = fmt(f.index,4);
+    document.getElementById('sim-forecast').textContent = fmt(f.value,2);
+    document.getElementById('sim-util').textContent = fmt((f.value/cap)*100,1)+'%';
+  }
+  simMonth.addEventListener('change', updateSimulator);
+  simCapacity.addEventListener('input', updateSimulator);
+  updateSimulator();
+
+  // ---------- QUIZ ----------
+  document.querySelectorAll('.quiz-card').forEach(card => {
+    const opts = card.querySelectorAll('.quiz-opt');
+    const feedback = card.querySelector('.quiz-feedback');
+    opts.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if(card.dataset.answered === "true") return;
+        card.dataset.answered = "true";
+        const isCorrect = opt.dataset.correct === "true";
+        opts.forEach(o => {
+          if(o.dataset.correct === "true"){ o.classList.add('correct'); }
+          else if(o === opt){ o.classList.add('wrong'); }
+        });
+        feedback.textContent = isCorrect ? "✅ Isso mesmo! Você entendeu o conceito." : "❌ Quase! Veja a opção destacada em verde — é essa a resposta certa.";
+        feedback.classList.add('show');
+      });
+    });
+  });
+
+  // ---------- HELPERS DE DESENHO EM CANVAS ----------
+  function getColors(){
+    const cs = getComputedStyle(document.documentElement);
+    return {
+      blue: cs.getPropertyValue('--senac-blue').trim() || '#004A8D',
+      orange: cs.getPropertyValue('--senac-orange').trim() || '#F7941D',
+      ink: cs.getPropertyValue('--ink').trim() || '#142433',
+      inkSoft: cs.getPropertyValue('--ink-soft').trim() || '#4B5C6B',
+      line: cs.getPropertyValue('--line').trim() || '#E2E6EA',
+      paper: cs.getPropertyValue('--paper').trim() || '#FBFAF7'
+    };
+  }
+
+  function setupCanvas(canvas){
+    const ratio = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = canvas.width, h = canvas.height;
+    return canvas.getContext('2d');
+  }
+
+  // ---------- WIDGET a/b INTERATIVO ----------
+  const abCanvas = document.getElementById('abCanvas');
+  const abCtx = abCanvas.getContext('2d');
+  const aSlider = document.getElementById('a-slider');
+  const bSlider = document.getElementById('b-slider');
+  const aVal = document.getElementById('aVal');
+  const bVal = document.getElementById('bVal');
+  const eqA = document.getElementById('eqA');
+  const eqB = document.getElementById('eqB');
+  const abFeedback = document.getElementById('abFeedback');
+
+  const allDemand = demand2014.concat(demand2015); // 24 points, X=1..24
+
+  function drawABChart(){
+    const C = getColors();
+    const W = abCanvas.width, H = abCanvas.height;
+    const padL = 56, padR = 24, padT = 20, padB = 40;
+    abCtx.clearRect(0,0,W,H);
+
+    const xMax = 26, yMax = 1050, yMin = 0;
+    function px(xVal){ return padL + (xVal/xMax)*(W-padL-padR); }
+    function py(yVal){ return H-padB - ((yVal-yMin)/(yMax-yMin))*(H-padT-padB); }
+
+    // grid
+    abCtx.strokeStyle = C.line; abCtx.lineWidth = 1;
+    abCtx.fillStyle = C.inkSoft; abCtx.font = '11px Inter, sans-serif';
+    for(let g=0; g<=1000; g+=200){
+      const y = py(g);
+      abCtx.beginPath(); abCtx.moveTo(padL,y); abCtx.lineTo(W-padR,y); abCtx.stroke();
+      abCtx.fillText(g, 8, y+4);
+    }
+    for(let g=0; g<=24; g+=4){
+      const xx = px(g);
+      abCtx.fillText('X='+g, xx-10, H-padB+16);
+    }
+
+    // scatter pontos reais
+    abCtx.fillStyle = C.blue;
+    allDemand.forEach((v,i) => {
+      const cx = px(i+1), cy = py(v);
+      abCtx.beginPath(); abCtx.arc(cx,cy,4,0,Math.PI*2); abCtx.fill();
+    });
+
+    // reta a + bX
+    const aNow = parseFloat(aSlider.value);
+    const bNow = parseFloat(bSlider.value);
+    abCtx.strokeStyle = C.orange; abCtx.lineWidth = 3;
+    abCtx.beginPath();
+    for(let xx=0; xx<=xMax; xx+=0.5){
+      const yy = aNow + bNow*xx;
+      const cx = px(xx), cy = py(Math.max(yMin,Math.min(yMax,yy)));
+      if(xx===0) abCtx.moveTo(cx,cy); else abCtx.lineTo(cx,cy);
+    }
+    abCtx.stroke();
+
+    // ponto de partida (X=0)
+    abCtx.fillStyle = C.orange;
+    const originY = py(Math.max(yMin,Math.min(yMax,aNow)));
+    abCtx.beginPath(); abCtx.arc(px(0), originY, 5, 0, Math.PI*2); abCtx.fill();
+  }
+
+  function updateABWidget(){
+    const aNow = parseFloat(aSlider.value);
+    const bNow = parseFloat(bSlider.value);
+    aVal.textContent = fmt(aNow,2);
+    bVal.textContent = fmt(bNow,2);
+    eqA.textContent = fmt(aNow,2);
+    eqB.textContent = fmt(bNow,2);
+    drawABChart();
+
+    let msg = '';
+    if(Math.abs(aNow-694)<15 && Math.abs(bNow-1.77)<0.15){
+      msg = '🎯 Estes são bem próximos dos valores reais calculados pela planilha (a≈694,13 · b≈1,77) — repare como a reta laranja passa bem no meio dos pontos azuis.';
+    } else if(bNow < 0){
+      msg = '📉 Com b negativo, a reta desce: isso representaria um negócio em queda, vendendo cada vez menos a cada mês.';
+    } else if(aNow > 800){
+      msg = '⬆️ Ao aumentar "a", toda a reta sobe de uma vez — o ponto de partida (X=0) fica mais alto, mas a inclinação continua igual.';
+    } else if(bNow > 4){
+      msg = '🚀 Um "b" bem maior deixa a reta muito mais íngreme: pequenas mudanças no tempo (X) geram saltos grandes na demanda prevista.';
+    } else {
+      msg = 'Mova os controles para comparar: "a" desloca a reta para cima/baixo; "b" muda o quanto ela inclina.';
+    }
+    abFeedback.textContent = msg;
+  }
+  aSlider.addEventListener('input', updateABWidget);
+  bSlider.addEventListener('input', updateABWidget);
+  updateABWidget();
+
+  // ---------- GRÁFICO PRINCIPAL (histórico + tendência + previsão) ----------
+  const mainCanvas = document.getElementById('mainChart');
+  const mainCtx = mainCanvas.getContext('2d');
+
+  function drawMainChart(){
+    const C = getColors();
+    const W = mainCanvas.width, H = mainCanvas.height;
+    const padL = 60, padR = 24, padT = 24, padB = 44;
+    mainCtx.clearRect(0,0,W,H);
+
+    const xMax = 37, yMax = 1050, yMin = 0;
+    function px(xVal){ return padL + (xVal/xMax)*(W-padL-padR); }
+    function py(yVal){ return H-padB - ((yVal-yMin)/(yMax-yMin))*(H-padT-padB); }
+
+    mainCtx.strokeStyle = C.line; mainCtx.lineWidth = 1;
+    mainCtx.fillStyle = C.inkSoft; mainCtx.font = '11px Inter, sans-serif';
+    for(let g=0; g<=1000; g+=200){
+      const y = py(g);
+      mainCtx.beginPath(); mainCtx.moveTo(padL,y); mainCtx.lineTo(W-padR,y); mainCtx.stroke();
+      mainCtx.fillText(g, 10, y+4);
+    }
+    [1,13,25,37].forEach(g => {
+      const xx = px(g);
+      const label = g===1?'jan/14':g===13?'jan/15':g===25?'jan/16':'dez/16';
+      mainCtx.fillText(label, xx-16, H-padB+18);
+    });
+
+    // linha divisória entre histórico e previsão
+    mainCtx.strokeStyle = C.line; mainCtx.setLineDash([4,4]);
+    mainCtx.beginPath(); mainCtx.moveTo(px(24.5),padT); mainCtx.lineTo(px(24.5),H-padB); mainCtx.stroke();
+    mainCtx.setLineDash([]);
+
+    // demanda real (2014-2015)
+    mainCtx.strokeStyle = C.blue; mainCtx.lineWidth = 2.5;
+    mainCtx.beginPath();
+    allDemand.forEach((v,i) => {
+      const cx = px(i+1), cy = py(v);
+      if(i===0) mainCtx.moveTo(cx,cy); else mainCtx.lineTo(cx,cy);
+    });
+    mainCtx.stroke();
+    mainCtx.fillStyle = C.blue;
+    allDemand.forEach((v,i) => {
+      mainCtx.beginPath(); mainCtx.arc(px(i+1),py(v),3,0,Math.PI*2); mainCtx.fill();
+    });
+
+    // tendência pura X=1..36
+    mainCtx.strokeStyle = C.inkSoft; mainCtx.lineWidth = 2; mainCtx.setLineDash([2,3]);
+    mainCtx.beginPath();
+    for(let xx=1; xx<=36; xx++){
+      const cx = px(xx), cy = py(trendAt(xx));
+      if(xx===1) mainCtx.moveTo(cx,cy); else mainCtx.lineTo(cx,cy);
+    }
+    mainCtx.stroke();
+    mainCtx.setLineDash([]);
+
+    // previsão 2016 (com sazonalidade)
+    mainCtx.strokeStyle = C.orange; mainCtx.lineWidth = 2.5;
+    mainCtx.beginPath();
+    for(let i=0;i<12;i++){
+      const f = forecast2016(i);
+      const cx = px(f.X), cy = py(f.value);
+      if(i===0) mainCtx.moveTo(cx,cy); else mainCtx.lineTo(cx,cy);
+    }
+    mainCtx.stroke();
+    mainCtx.fillStyle = C.orange;
+    for(let i=0;i<12;i++){
+      const f = forecast2016(i);
+      mainCtx.beginPath(); mainCtx.arc(px(f.X),py(f.value),4,0,Math.PI*2); mainCtx.fill();
+    }
+  }
+  drawMainChart();
+
+  window.addEventListener('resize', () => { drawABChart(); drawMainChart(); });
+})();
+</script>
+</body>
+</html>
